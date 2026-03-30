@@ -6,6 +6,7 @@ node_modules
 questions_*
 
 output_*
+output*
 log.txt
 
 filter grade_*
