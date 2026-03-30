@@ -8,5 +8,6 @@ questions_*
 output_*
 output*
 log.txt
-
+.env
 filter grade_*
+backup.jsonl

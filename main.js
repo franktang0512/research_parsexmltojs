@@ -81,7 +81,17 @@ for (const row of data) {
 
   // const folder = "1";//example
   const folder = "27"; //newtp
+
+  // ===== XML 路徑（不要改）=====
   const xmlPath = `./${folder}/${sid}-${qid}-${sub}.xml`;
+
+  // ===== JS 輸出資料夾 =====
+  const jsDir = `./${folder}/js`;
+
+  // 建立資料夾
+  if (!fs.existsSync(jsDir)) {
+    fs.mkdirSync(jsDir);
+  }
 
   let js = "";
   let tokenScore = 0;
@@ -93,6 +103,10 @@ for (const row of data) {
   } else {
     const xml = fs.readFileSync(xmlPath, "utf-8");
     js = xmlToJs(xml);
+
+    // ===== 🔥 存完整 JS（不經 Excel）=====
+    const jsPath = `${jsDir}/${sid}-${qid}-${sub}.js`;
+    fs.writeFileSync(jsPath, js, "utf-8");
 
     // ===== 🔥 印出學生程式 =====
     log("\n🧠 ===== Generated JS =====");
@@ -116,7 +130,6 @@ for (const row of data) {
       tokenScore = tokenResult.totalScore;
       lineScore = lineResult.totalScore;
 
-      // ===== 顯示 summary =====
       log("\n📊 === Mode Score Summary ===");
       log(`TOKEN: ${tokenScore} / ${tokenResult.maxScore}`);
       log(`LINE : ${lineScore} / ${lineResult.maxScore}`);
@@ -125,7 +138,6 @@ for (const row of data) {
 
   const originalScore = Number(row["分數"] || 0);
 
-  // ===== 🔥 關鍵改動（OR 判斷）=====
   if (originalScore === tokenScore || originalScore === lineScore) {
     validation = "OK";
   } else {
@@ -137,13 +149,8 @@ for (const row of data) {
   log(`👉 LINE分數: ${lineScore}`);
   log(`👉 驗證: ${validation}`);
 
-  // ===== Excel JS =====
-  let safeJS = "";
-  if (js.length > 30000) {
-    safeJS = `[過長已略過: ${js.length} chars]`;
-  } else {
-    safeJS = js;
-  }
+  // ===== 🔥 Excel 不再存 JS，只存路徑 =====
+  const jsPath = `${folder}/js/${sid}-${qid}-${sub}.js`;
 
   results.push({
     "繳交流水號": row["繳交流水號"],
@@ -155,15 +162,14 @@ for (const row of data) {
     "繳交時間": row["繳交時間"],
     "TOKEN分數": tokenScore,
     "LINE分數": lineScore,
-    "學生程式轉js": safeJS,
-    "驗證分數": validation
+    "驗證分數": validation,
+    "JS路徑": jsPath
   });
 }
 
 // ===== 輸出 Excel =====
 const outSheet = XLSX.utils.json_to_sheet(results);
 
-// 🔥 自動換行
 Object.keys(outSheet).forEach(cell => {
   if (cell[0] === '!') return;
   if (outSheet[cell].v && typeof outSheet[cell].v === "string") {
