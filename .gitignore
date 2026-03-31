@@ -11,3 +11,7 @@ log.txt
 .env
 filter grade_*
 backup.jsonl
+
+cleaned_output.xlsx
+completed_dataset_preserve_na.xlsx
+studentsperformance.xlsx
