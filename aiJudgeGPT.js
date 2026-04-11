@@ -10,7 +10,7 @@ const client = new OpenAI({
 // ===== 檔案 =====
 const FILE_PATH = "output_newtp.xlsx";
 const LOG_PATH = "log.txt";
-const BACKUP_PATH = "backup.jsonl";
+const BACKUP_PATH = "backup_gpt.jsonl";
 
 // ===== rubric =====
 const RUBRIC = fs.readFileSync("./rubric.txt", "utf-8");

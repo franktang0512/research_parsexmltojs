@@ -1,13 +1,10 @@
 const XLSX = require("xlsx");
 
-// ====== 你可以改的設定 ======
-const INPUT_FILE = "cleaned_output.xlsx";
-const OUTPUT_FILE = "completed_dataset_preserve_na.xlsx";
+const INPUT_FILE = "cleaned_output_gemini3.xlsx";
+const OUTPUT_FILE = "completed_dataset_preserve_na_gemini3.xlsx";
 
-// sid 範圍
 const ALL_SIDS = Array.from({ length: 529 - 440 + 1 }, (_, i) => 440 + i);
 
-// 這些欄位在「補出的新 row」中填 0
 const ZERO_COLS = [
   "score",
   "abstraction",
@@ -18,7 +15,6 @@ const ZERO_COLS = [
   "analyzing",
 ];
 
-// 這些欄位在「補出的新 row」中填 "NA"
 const NA_COLS = [
   "pattern",
   "evaluating",
@@ -37,6 +33,10 @@ const NUMERIC_COLS = [
   "analyzing",
 ];
 
+const EMPTY_COLS = [
+  "analysis",
+];
+
 function normalizeNumericValue(value) {
   if (value === null || value === undefined || value === "") return null;
   if (typeof value === "number") return Number.isNaN(value) ? null : value;
@@ -49,44 +49,34 @@ function normalizeNumericValue(value) {
   return value;
 }
 
-// 這些欄位在「補出的新 row」中填空字串
-const EMPTY_COLS = [
-  "解題分析",
-];
-
-// ====== 讀檔 ======
 const workbook = XLSX.readFile(INPUT_FILE);
 const sheetName = workbook.SheetNames[0];
 const sheet = workbook.Sheets[sheetName];
 const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
 
 if (rows.length === 0) {
-  throw new Error("Excel 沒有資料");
+  throw new Error("Excel has no data");
 }
 
-// ====== 自動抓欄位名稱 ======
 const headers = Object.keys(rows[0]);
-
-const sidCol = headers.find(c => c.toLowerCase() === "sid" || c.includes("學生id") || c.includes("學生ID"));
-const qidCol = headers.find(c => c.toLowerCase() === "qid" || c.includes("題目id") || c.includes("題目ID"));
+const sidCol = headers.find((c) => c.toLowerCase() === "sid");
+const qidCol = headers.find((c) => c.toLowerCase() === "qid");
 
 if (!sidCol || !qidCol) {
-  throw new Error(`找不到 sid/qid 欄位。現有欄位：${headers.join(", ")}`);
+  throw new Error(`Could not find sid/qid columns: ${headers.join(", ")}`);
 }
 
-// ====== 取得所有 qid ======
 const allQids = [...new Set(
   rows
-    .map(r => r[qidCol])
-    .filter(v => v !== null && v !== undefined && v !== "")
+    .map((r) => r[qidCol])
+    .filter((v) => v !== null && v !== undefined && v !== "")
 )].sort((a, b) => {
-  // 若是數字就數字排序，否則字串排序
-  const na = Number(a), nb = Number(b);
+  const na = Number(a);
+  const nb = Number(b);
   if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
   return String(a).localeCompare(String(b), "zh-Hant");
 });
 
-// ====== 建立現有 key ======
 const existing = new Map();
 for (const row of rows) {
   row[sidCol] = normalizeNumericValue(row[sidCol]);
@@ -102,7 +92,6 @@ for (const row of rows) {
   existing.set(key, row);
 }
 
-// ====== 補齊缺的 row ======
 const output = [];
 let addedCount = 0;
 
@@ -111,35 +100,32 @@ for (const sid of ALL_SIDS) {
     const key = `${sid}__${qid}`;
 
     if (existing.has(key)) {
-      // 原本有資料：完全保留
       output.push(existing.get(key));
-    } else {
-      // 原本沒資料：建立新 row
-      const newRow = {};
-
-      // 先把所有欄位建出來，避免漏欄
-      for (const h of headers) {
-        newRow[h] = null;
-      }
-
-      newRow[sidCol] = sid;
-      newRow[qidCol] = normalizeNumericValue(qid);
-
-      for (const col of ZERO_COLS) {
-        if (headers.includes(col)) newRow[col] = 0;
-      }
-
-      for (const col of NA_COLS) {
-        if (headers.includes(col)) newRow[col] = "NA";
-      }
-
-      for (const col of EMPTY_COLS) {
-        if (headers.includes(col)) newRow[col] = "";
-      }
-
-      output.push(newRow);
-      addedCount++;
+      continue;
     }
+
+    const newRow = {};
+    for (const header of headers) {
+      newRow[header] = null;
+    }
+
+    newRow[sidCol] = sid;
+    newRow[qidCol] = normalizeNumericValue(qid);
+
+    for (const col of ZERO_COLS) {
+      if (headers.includes(col)) newRow[col] = 0;
+    }
+
+    for (const col of NA_COLS) {
+      if (headers.includes(col)) newRow[col] = "NA";
+    }
+
+    for (const col of EMPTY_COLS) {
+      if (headers.includes(col)) newRow[col] = "";
+    }
+
+    output.push(newRow);
+    addedCount++;
   }
 }
 
@@ -151,28 +137,24 @@ for (const row of output) {
   }
 }
 
-// ====== 排序 ======
 output.sort((a, b) => {
   const sidA = Number(a[sidCol]);
   const sidB = Number(b[sidCol]);
   if (sidA !== sidB) return sidA - sidB;
 
-  const qa = Number(a[qidCol]);
-  const qb = Number(b[qidCol]);
-  if (!Number.isNaN(qa) && !Number.isNaN(qb)) return qa - qb;
+  const qidA = Number(a[qidCol]);
+  const qidB = Number(b[qidCol]);
+  if (!Number.isNaN(qidA) && !Number.isNaN(qidB)) return qidA - qidB;
 
   return String(a[qidCol]).localeCompare(String(b[qidCol]), "zh-Hant");
 });
 
-// ====== 輸出 ======
 const outSheet = XLSX.utils.json_to_sheet(output, { header: headers });
 const outBook = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(outBook, outSheet, "completed");
 XLSX.writeFile(outBook, OUTPUT_FILE);
 
-console.log(`完成：${OUTPUT_FILE}`);
-console.log(`原始列數：${rows.length}`);
-console.log(`補上的列數：${addedCount}`);
-console.log(`總列數：${output.length}`);
-console.log(`題目數：${allQids.length}`);
-console.log(`學生數：${ALL_SIDS.length}`);
+console.log(`Done. Wrote ${OUTPUT_FILE}`);
+console.log(`Original rows: ${rows.length}`);
+console.log(`Added rows: ${addedCount}`);
+console.log(`Final rows: ${output.length}`);

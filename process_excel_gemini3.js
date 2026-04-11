@@ -26,7 +26,7 @@ function normalizeNumericValue(value) {
 }
 
 // 讀你的 Excel
-const workbook = XLSX.readFile("output_newtp.xlsx");
+const workbook = XLSX.readFile("output_newtp_gemini3.xlsx");
 const sheetName = workbook.SheetNames[0];
 const sheet = workbook.Sheets[sheetName];
 
@@ -100,6 +100,6 @@ const newWorkbook = XLSX.utils.book_new();
 
 XLSX.utils.book_append_sheet(newWorkbook, newSheet, "cleaned");
 
-XLSX.writeFile(newWorkbook, "cleaned_output.xlsx");
+XLSX.writeFile(newWorkbook, "cleaned_output_gemini3.xlsx");
 
-console.log("✅ 完成！輸出 cleaned_output.xlsx");
+console.log("✅ 完成！輸出 cleaned_output_gemini3.xlsx");
